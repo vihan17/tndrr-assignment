@@ -1,0 +1,21 @@
+0.00.020.464 I srv  llama_server: initializing ...
+0.00.184.603 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.192.478 I srv  init_listene: The UI is disabled
+0.00.192.497 I srv  init_listene: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
+0.00.195.387 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.211.289 I srv    load_model: loading model 'C:\Users\Chetan\tndrr-assignment\task3-local-llm\models\qwen2.5-3b-instruct-q6_k.gguf'
+0.00.983.276 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.04.246.573 I cmn          init: llama threadpool init, n_threads = 4
+0.38.078.213 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+0.38.120.958 I srv  server_run_i: model loaded
+0.38.121.892 I srv  server_on_li: listening on http://127.0.0.1:8091
+0.38.754.055 I slot       select: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1
+0.38.760.242 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+15.33.213.509 I slot print_timing: id  0 | task 0 | prompt eval time =   18756.83 ms /    43 tokens (  436.21 ms per token,     2.29 tokens per second)
+15.33.213.550 I slot print_timing: id  0 | task 0 |        eval time =  875693.08 ms /    51 tokens (17513.86 ms per token,     0.06 tokens per second)
+15.33.213.678 I slot print_timing: id  0 | task 0 |       total time =  894449.91 ms /    94 tokens
+15.33.213.687 I slot print_timing: id  0 | task 0 |    graphs reused =         50
+15.33.213.689 I slot print_timing: id  0 | task 0 |   graph reallocs =          0    /     0        (same size) / (changed size)
+15.33.222.720 I slot      release: id  0 | task 0 | stop processing: n_tokens = 93, truncated = 0
+15.33.280.107 I slot       select: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 0.238 (> 0.100 thold), f_keep = 0.258
+15.33.286.503 I slot launch_slot_: id  0 | task 52 | processing task, is_child = 0

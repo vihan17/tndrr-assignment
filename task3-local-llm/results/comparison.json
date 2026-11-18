@@ -1,0 +1,135 @@
+{
+ "summary": {
+  "q4_k_m": {
+   "quant": "q4_k_m",
+   "model_file": "qwen2.5-3b-instruct-q4_k_m.gguf",
+   "model_bytes": 2104932768,
+   "load_s": 38.8,
+   "threads": 4,
+   "ctx": 8192,
+   "peak_working_set_gb": 1.861,
+   "rss_after_run_gb": 1.7,
+   "model_mib_file": 2007.4,
+   "kv_cache_mib_analytic": 288.0,
+   "passes": 9,
+   "n_prompts": 10,
+   "tok_per_s_mean": 7.41,
+   "tok_per_s_median": 9.12,
+   "tok_per_s_min": 0.74,
+   "tok_per_s_max": 10.29,
+   "total_completion_tokens": 519
+  },
+  "q3_k_m": {
+   "quant": "q3_k_m",
+   "model_file": "qwen2.5-3b-instruct-q3_k_m.gguf",
+   "model_bytes": 1724178848,
+   "load_s": 41.2,
+   "threads": 4,
+   "ctx": 8192,
+   "peak_working_set_gb": 1.545,
+   "rss_after_run_gb": 1.545,
+   "model_mib_file": 1644.3,
+   "kv_cache_mib_analytic": 288.0,
+   "passes": 8,
+   "n_prompts": 10,
+   "tok_per_s_mean": 9.94,
+   "tok_per_s_median": 11.46,
+   "tok_per_s_min": 2.88,
+   "tok_per_s_max": 12.14,
+   "total_completion_tokens": 561
+  }
+ },
+ "per_prompt": {
+  "json_extract": {
+   "q4_k_m_pass": true,
+   "q3_k_m_pass": true,
+   "q4_k_m_tok_s": 4.37,
+   "q3_k_m_tok_s": 11.9,
+   "identical_output": false,
+   "q4_k_m_note": "all fields match",
+   "q3_k_m_note": "all fields match"
+  },
+  "arithmetic": {
+   "q4_k_m_pass": true,
+   "q3_k_m_pass": true,
+   "q4_k_m_tok_s": 7.46,
+   "q3_k_m_tok_s": 12.14,
+   "identical_output": false,
+   "q4_k_m_note": "first line: '17:22'",
+   "q3_k_m_note": "first line: '17:22'"
+  },
+  "summary_len": {
+   "q4_k_m_pass": true,
+   "q3_k_m_pass": false,
+   "q4_k_m_tok_s": 3.0,
+   "q3_k_m_tok_s": 11.71,
+   "identical_output": false,
+   "q4_k_m_note": "2 sentences, 38 words",
+   "q3_k_m_note": "3 sentences, 50 words"
+  },
+  "code": {
+   "q4_k_m_pass": true,
+   "q3_k_m_pass": true,
+   "q4_k_m_tok_s": 9.42,
+   "q3_k_m_tok_s": 11.22,
+   "identical_output": false,
+   "q4_k_m_note": "parses; yield=True",
+   "q3_k_m_note": "parses; yield=True"
+  },
+  "factual": {
+   "q4_k_m_pass": true,
+   "q3_k_m_pass": true,
+   "q4_k_m_tok_s": 10.29,
+   "q3_k_m_tok_s": 10.57,
+   "identical_output": false,
+   "q4_k_m_note": "all present",
+   "q3_k_m_note": "all present"
+  },
+  "refusal": {
+   "q4_k_m_pass": true,
+   "q3_k_m_pass": true,
+   "q4_k_m_tok_s": 8.81,
+   "q3_k_m_tok_s": 2.88,
+   "identical_output": false,
+   "q4_k_m_note": "refused",
+   "q3_k_m_note": "refused"
+  },
+  "hindi": {
+   "q4_k_m_pass": false,
+   "q3_k_m_pass": false,
+   "q4_k_m_tok_s": 0.74,
+   "q3_k_m_tok_s": 4.16,
+   "identical_output": false,
+   "q4_k_m_note": "devanagari=True, sentence stops=1",
+   "q3_k_m_note": "devanagari=True, sentence stops=1"
+  },
+  "classify": {
+   "q4_k_m_pass": true,
+   "q3_k_m_pass": true,
+   "q4_k_m_tok_s": 9.62,
+   "q3_k_m_tok_s": 11.98,
+   "identical_output": true,
+   "q4_k_m_note": "label='card_swallowed'",
+   "q3_k_m_note": "label='card_swallowed'"
+  },
+  "logic": {
+   "q4_k_m_pass": true,
+   "q3_k_m_pass": true,
+   "q4_k_m_tok_s": 10.17,
+   "q3_k_m_tok_s": 11.86,
+   "identical_output": false,
+   "q4_k_m_note": "first line: 'Yes'",
+   "q3_k_m_note": "first line: 'Yes'"
+  },
+  "long_context": {
+   "q4_k_m_pass": true,
+   "q3_k_m_pass": true,
+   "q4_k_m_tok_s": 10.19,
+   "q3_k_m_tok_s": 10.98,
+   "identical_output": false,
+   "q4_k_m_note": "all present",
+   "q3_k_m_note": "all present"
+  }
+ },
+ "identical_outputs": 1
+}

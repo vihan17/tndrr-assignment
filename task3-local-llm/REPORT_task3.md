@@ -10,51 +10,81 @@ Qwen2.5-3B-Instruct in GGUF, 4 threads on an i3-1115G4 (2 cores / 4 threads), 7.
 |---|---|
 | Runtime | llama.cpp b12465, `llama-server` (OpenAI-compatible `/v1/chat/completions`) |
 | Model | Qwen2.5-3B-Instruct (3.09B params) |
-| Quantisations | Q4_K_M and Q8_0 |
+| Quantisations | **Q4_K_M** and **Q3_K_M** (Q8_0 and Q6_K attempted; both thrash — see below) |
 | Context | 8,192 tokens, one slot |
 | Threads | 4 |
 | Sampling | temperature 0, top_p 1.0, seed 1234 |
 
 ## Measured results
 
-| Metric | Q4_K_M | Q8_0 |
+| Metric | Q4_K_M | Q3_K_M |
 |---|---:|---:|
-| File size | 2,007 MiB (1.96 GB) | 3,449 MiB (3.37 GB) |
-| Effective bits/weight | ~5.2 | ~8.9 |
+| File size | 2,007 MiB (1.96 GiB) | 1,644 MiB (1.61 GiB) |
+| Nominal bits / weight | 4–6 mixed | 3–5 mixed |
 | KV cache at 8k ctx (fp16) | 288 MiB | 288 MiB |
-| Peak working set (measured) | **1.86 GB** | *(pending)* |
-| Load time | 38.8 s | *(pending)* |
-| Generation speed, median | **9.12 tok/s** | *(pending)* |
-| Generation speed, range | 0.74 – 10.29 tok/s | *(pending)* |
-| 10-prompt checks passed | **9/10** | *(pending)* |
+| Peak working set (measured) | **1.86 GB** | **1.54 GB** |
+| Load time | 38.8 s | 41.2 s |
+| Generation speed, median | **9.12 tok/s** | **11.46 tok/s** |
+| Generation speed, range | 0.74 – 10.29 tok/s | 2.88 – 12.14 tok/s |
+| 10-prompt checks passed | **9/10** | **8/10** |
 
 The spread in tok/s is real and worth stating plainly: on two physical cores the machine is also
-running Windows and an IDE, so individual prompts range from 0.7 to 10.3 tok/s. The median is the
-honest headline; the mean (7.41) is dragged down by the Hindi prompt, which produced a long answer
-and hit the slowest stretch of the run.
+running Windows and an IDE, so individual prompts range from 0.7 to 10.3 tok/s on Q4_K_M and 2.9 to
+12.1 tok/s on Q3_K_M. The median is the honest headline; the means (7.41 and 9.94) are dragged down
+by one long answer each (Hindi on Q4, the refusal on Q3). The trade is clean: Q3_K_M is **1.26×
+faster** and **1.20× smaller** in peak RSS, and it loses exactly one additional check.
+
+## Why the second setting is Q3_K_M, not Q8_0 or Q6_K
+
+My first plan was Q4_K_M vs Q8_0. The Q8_0 file is 3,449 MiB (3.37 GiB), and llama.cpp loaded it
+(`model loaded` 82 s after launch), but the first forward pass never finished: 17 minutes of warm-up
+at ~7% CPU, working set oscillating between 1.1 and 1.5 GB, and free physical memory down to
+0.06 GB. I killed it.
+
+The next rung down, Q6_K, is 2,664 MiB (2.60 GiB). It loaded in 38.8 s and did complete the warm-up
+— but the warm-up is the evidence: **51 generated tokens in 875.7 s, or 0.06 tok/s**, with prompt
+eval at 2.29 tok/s. At 17.5 s per token, one 64-token answer would take ~19 minutes. That is
+paging, not compute.
+
+So the ceiling on this 7.7 GB laptop sits **between Q4_K_M** (2,007 MiB file, 1.86 GB peak working
+set, 9.1 tok/s) **and Q6_K**. The usable second setting has to be *below* Q4, not above it. I picked
+**Q3_K_M** (~1.6 GiB), the next rung down with clear headroom. Both rejected attempts left server
+logs (`results/server_q8_0.log`, `results/server_q6_k.log`), so the claim is checkable rather than a
+story.
+
+That is the real lesson of this task: on a constrained host, the quantisation you can run is set by
+the memory ceiling, not by the quality ladder. A Q8_0 number produced by a machine that is
+thrashing would be a number about the page file, not about the model. The comparison below therefore
+measures the cliff from below: Q4_K_M vs Q3_K_M.
 
 ## The 10-prompt quality comparison
 
 Each prompt has a check that is pass/fail rather than a vibe, so the comparison produces a count.
 The full outputs are in `results/<quant>.json`.
 
-| Prompt | What it tests | Q4_K_M | Q8_0 |
+| Prompt | What it tests | Q4_K_M | Q3_K_M |
 |---|---|---:|---:|
-| `json_extract` | strict JSON, ISO date, numeric amount | PASS | *(pending)* |
-| `arithmetic` | 14:35 + 2 h 47 m → 17:22 | PASS | *(pending)* |
-| `summary_len` | exactly 2 sentences, ≤ 40 words | PASS (2 s, 38 w) | *(pending)* |
-| `code` | `chunks(lst, n)` parses, contains `yield` | PASS | *(pending)* |
-| `factual` | deepest ocean / Challenger Deep | PASS | *(pending)* |
-| `refusal` | refuses lock-picking instructions | PASS | *(pending)* |
-| `hindi` | Devanagari, exactly two sentences | **FAIL** (1 stop) | *(pending)* |
-| `classify` | Banking77-style label in JSON | PASS | *(pending)* |
-| `logic` | syllogism, answer "Yes" | PASS | *(pending)* |
-| `long_context` | recall two facts from a memo | PASS | *(pending)* |
+| `json_extract` | strict JSON, ISO date, numeric amount | PASS | PASS |
+| `arithmetic` | 14:35 + 2 h 47 m → 17:22 | PASS | PASS |
+| `summary_len` | exactly 2 sentences, ≤ 40 words | PASS (2 s, 38 w) | **FAIL** (3 s, 50 w) |
+| `code` | `chunks(lst, n)` parses, contains `yield` | PASS | PASS |
+| `factual` | deepest ocean / Challenger Deep | PASS | PASS |
+| `refusal` | refuses lock-picking instructions | PASS | PASS |
+| `hindi` | Devanagari, exactly two sentences | **FAIL** (1 stop) | **FAIL** (1 stop) |
+| `classify` | Banking77-style label in JSON | PASS | PASS |
+| `logic` | syllogism, answer "Yes" | PASS | PASS |
+| `long_context` | recall two facts from a memo | PASS | PASS |
 
 Q4_K_M's single failure is instructive: it answered in Hindi correctly but wrote **one** sentence
 where the prompt asked for exactly two. That is an instruction-following failure, not a knowledge
-failure — and it is the kind of thing a lower-bit quantisation is expected to make slightly more
-likely, because the model has less capacity to track surface constraints.
+failure. Q3_K_M is the direct test of whether a lower-bit setting makes that kind of surface
+constraint failure more likely.
+
+Q3_K_M answers that test: it loses one check relative to Q4_K_M. On `summary_len` it wrote **3
+sentences and 50 words** instead of exactly 2 and ≤40 — the same class of failure (surface
+constraint, not knowledge) and the expected direction. Everything else held: JSON, arithmetic,
+code, factual recall, refusal, classification, logic and long-context recall all passed. The Hindi
+prompt failed in both settings, so that one is about the prompt/model, not the quantisation.
 
 ## How the KV cache works
 
@@ -84,24 +114,30 @@ space, not out of model.
 Weights are stored as numbers. In fp16 each weight is 2 bytes, so 3.09B parameters would need
 about 6.2 GB. Quantisation stores each weight (or a small block of weights) in fewer bits:
 
-- **Q8_0** keeps 8 bits per weight plus one scale per 32-weight block (~8.5 bits/weight). This file
-  is 3.37 GB, about 8.9 effective bits/weight once embeddings and metadata are included.
+- **Q8_0** (attempted, does not fit) keeps 8 bits per weight plus one scale per 32-weight block.
+  Its file is 3.37 GiB, roughly half of fp16. It loaded, but never completed a forward pass.
+- **Q6_K** (attempted, does not fit) keeps 6 bits per weight with 8-bit block scales. Its file is
+  2.60 GiB and it generated at 0.06 tok/s — it fits in the address space but not in RAM.
 - **Q4_K_M** uses a mixture: most tensors at 4 bits with per-block scales and minimums, some
-  important tensors at 6 bits. This file is 1.96 GB, about 5.2 effective bits/weight.
+  important tensors at 6 bits. Its file is 1.96 GiB, and it is the first setting that runs at a
+  usable speed.
+- **Q3_K_M** keeps ~3 bits per weight, with a few 4- and 5-bit tensors. Its file is ~1.6 GiB, the
+  second setting that fits with headroom.
 
-So Q4 is 1.72× smaller than Q8, and Q8 is roughly half of fp16 — the memory saving is close to
-linear in bits per weight, with a small overhead for the block scales.
+So the file sizes track bits per weight almost linearly: Q4 is about 1.22× the size of Q3, Q6 is
+about 1.33× the size of Q4, and Q8 is about 1.29× the size of Q6. The saving is close to linear
+with a small overhead for the block scales.
 
 Quantisation does **not** touch the KV cache or the activations. Weights, KV cache and compute
 buffers are three separate allocations; quantising weights changes only the first. That is why the
 KV number above is identical for both models, and why you can independently quantise the KV cache
 (`--cache-type-k q8_0 --cache-type-v q8_0`) to halve it at a small quality cost.
 
-Quality-wise, Q8_0 is close to lossless, while Q4_K_M is where degradation starts to be measurable
-on hard tasks — long-tail knowledge, arithmetic, and surface constraints like "exactly two
-sentences". Speed-wise, quantisation usually *helps*: decoding is memory-bandwidth-bound, so
-reading 2 GB per token is faster than reading 3.4 GB, which is why Q4 is expected to be the faster
-setting on this CPU as well.
+Quality-wise, the standard expectation is that Q8_0 and Q6_K are close to lossless and Q4/Q3 are
+where long-tail knowledge and surface constraints start to wobble. This machine cannot test that
+ladder from above, so the comparison is the Q4→Q3 step. Speed-wise, quantisation usually *helps*:
+decoding is memory-bandwidth-bound, so reading 1.6 GiB per token should be faster than reading
+1.96 GiB, which is why Q3 is expected to be the faster setting on this CPU.
 
 ## Serving 20 concurrent users on a 24 GB GPU
 
@@ -143,7 +179,9 @@ reload costs seconds during which nobody is served.
 ## Limitations
 
 - One 2-core laptop CPU, so the absolute tok/s numbers say more about this machine than about the
-  quantisations. The *ratio* between Q4 and Q8 is the transferable result.
+  quantisations. The *ratio* between Q4 and Q3 is the transferable result.
+- Q8_0 and Q6_K are documented as rejected rather than measured: both were killed after failing to
+  produce usable throughput. Their logs are kept in `results/`.
 - The first forward pass after loading took 339 s on the Q4 run (cold page cache on a 7.7 GB
   machine). It is excluded from the timed results via an explicit warm-up, and it is the single
   biggest reason a laptop is a poor serving host.

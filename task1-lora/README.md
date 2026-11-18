@@ -167,6 +167,10 @@ python eval_zero.py --n 300 --out results/zero
 `results/metrics.json` holds the summary numbers, `results/failures.json` the 18 error cases.
 `eval.py` writes the full `predictions.jsonl` (300 rows) so every number above can be re-derived.
 
+**Retained artifacts:** the metrics and failure JSONs are committed; the adapter (`runs/lora_r16/`)
+and `predictions.jsonl` are not — the Colab runtime was recycled after the run. The commands above
+regenerate both from the fixed seed 0 in about 7 minutes on a free T4.
+
 ## 9. Limitations
 
 - One seed, one run per configuration; ±1–2 pp variance at n=300 is expected.

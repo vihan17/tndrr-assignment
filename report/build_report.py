@@ -20,8 +20,8 @@ b25_256 = load("task2-rag", "results", "bm25_256.json")["summary"]
 b25_512 = load("task2-rag", "results", "bm25_512.json")["summary"]
 
 q4 = load("task3-local-llm", "results", "q4_k_m.json")
-q8_path = os.path.join(BASE, "task3-local-llm", "results", "q8_0.json")
-q8 = load("task3-local-llm", "results", "q8_0.json") if os.path.exists(q8_path) else None
+q3_path = os.path.join(BASE, "task3-local-llm", "results", "q3_k_m.json")
+q3 = load("task3-local-llm", "results", "q3_k_m.json") if os.path.exists(q3_path) else None
 
 fails = load("task1-lora", "results", "failures.json")
 cc = fails["confusion_counts"]
@@ -35,9 +35,9 @@ with open(os.path.join(BASE, "task2-rag", "corpus", "pages.jsonl"), encoding="ut
 N_PAGES = len(_pages)
 N_CHARS = sum(len(p.get("text", "")) for p in _pages)
 
-Q8_MODEL_MIB = os.path.getsize(os.path.join(BASE, "task3-local-llm", "models",
-                                            "qwen2.5-3b-instruct-q8_0.gguf")) / 1024**2
-Q8_MIB = f"{Q8_MODEL_MIB:,.0f}"
+Q3_MODEL_MIB = os.path.getsize(os.path.join(BASE, "task3-local-llm", "models",
+                                            "qwen2.5-3b-instruct-q3_k_m.gguf")) / 1024**2
+Q3_MIB = f"{Q3_MODEL_MIB:,.0f}"
 
 res = m["results"]
 tr = m["training"]
@@ -49,13 +49,13 @@ def pct(x, nd=1):
     return f"{x * 100:.{nd}f}%"
 
 
-def q8cell(key, fmt="{:.2f}"):
-    return fmt.format(q8[key]) if q8 else "—"
+def q3cell(key, fmt="{:.2f}"):
+    return fmt.format(q3[key]) if q3 else "—"
 
 
-def q8row(label, key, fmt="{:.2f}", suffix=""):
+def q3row(label, key, fmt="{:.2f}", suffix=""):
     return (f"<tr><td>{label}</td><td>{fmt.format(q4[key])}{suffix}</td>"
-            f"<td>{q8cell(key, fmt)}{suffix}</td></tr>")
+            f"<td>{q3cell(key, fmt)}{suffix}</td></tr>")
 
 
 CSS = """
@@ -245,25 +245,33 @@ bigger stack.</p>
 
 <h2 class="newpage">Task 3 — local model, two quantisation settings</h2>
 
-<p>llama.cpp <b>b12465</b> (CPU build), Qwen2.5-3B-Instruct in GGUF, <b>Q4_K_M vs Q8_0</b>, 4 threads on an
+<p>llama.cpp <b>b12465</b> (CPU build), Qwen2.5-3B-Instruct in GGUF, <b>Q4_K_M vs Q3_K_M</b>, 4 threads on an
 i3-1115G4 (2 cores / 4 threads), 8,192-token context, temperature 0, seed 1234. Ten prompts, each with a
 checkable answer rather than a vibe: JSON extraction, arithmetic, a two-sentence summary, code that must parse,
 factual recall, a refusal, Hindi, classification, a syllogism, and long-context recall.</p>
 
+<p><b>Why Q3_K_M and not Q8_0.</b> My first plan was Q4_K_M vs Q8_0. Q8_0 (3.37 GiB) loaded, but its first forward
+pass never finished: 17 minutes of warm-up at ~7% CPU, free RAM down to 0.06 GB. Q6_K (2.60 GiB) was next: it
+loaded and completed a warm-up, but at <b>0.06 tok/s</b> — 875 s for 51 tokens, 17 s per token. Both were paging,
+not computing, so I killed them. The ceiling on this 7.7 GB laptop sits between Q4_K_M (1.86 GB working set,
+9.1 tok/s) and Q6_K, so the second setting is Q3_K_M (~1.6 GiB), the next rung down that fits with headroom. The
+experiment measures the memory cliff from below rather than the quality ladder from above — the honest answer on
+this hardware. Server logs for both rejected settings are in <span class="mono">results/</span>.</p>
+
 <table>
-<tr><th>Metric</th><th class="n">Q4_K_M</th><th class="n">Q8_0</th></tr>
-<tr><td>File size</td><td class="n">{q4['model_mib_file']:.0f} MiB</td><td class="n">{q8cell('model_mib_file','{:.0f}') if q8 else Q8_MIB} MiB</td></tr>
-<tr><td>Effective bits / weight</td><td class="n">~5.2</td><td class="n">~8.9</td></tr>
+<tr><th>Metric</th><th class="n">Q4_K_M</th><th class="n">Q3_K_M</th></tr>
+<tr><td>File size</td><td class="n">{q4['model_mib_file']:.0f} MiB</td><td class="n">{q3cell('model_mib_file','{:.0f}') if q3 else Q3_MIB} MiB</td></tr>
+<tr><td>Nominal bits / weight</td><td class="n">4–6 mixed</td><td class="n">3–5 mixed</td></tr>
 <tr><td>KV cache at 8k context (fp16)</td><td class="n">{q4['kv_cache_mib_analytic']:.0f} MiB</td>
 <td class="n">{q4['kv_cache_mib_analytic']:.0f} MiB</td></tr>
 <tr><td>Peak working set (measured)</td><td class="n">{q4['peak_working_set_gb']:.2f} GB</td>
-<td class="n">{q8cell('peak_working_set_gb','{:.2f}')} GB</td></tr>
-<tr><td>Load time</td><td class="n">{q4['load_s']:.1f} s</td><td class="n">{q8cell('load_s','{:.1f}')} s</td></tr>
+<td class="n">{q3cell('peak_working_set_gb','{:.2f}')} GB</td></tr>
+<tr><td>Load time</td><td class="n">{q4['load_s']:.1f} s</td><td class="n">{q3cell('load_s','{:.1f}')} s</td></tr>
 <tr><td>Generation speed, median</td><td class="n"><b>{q4['tok_per_s_median']:.2f} tok/s</b></td>
-<td class="n"><b>{q8cell('tok_per_s_median')} tok/s</b></td></tr>
+<td class="n"><b>{q3cell('tok_per_s_median')} tok/s</b></td></tr>
 <tr><td>Generation speed, range</td><td class="n">{q4['tok_per_s_min']:.2f}–{q4['tok_per_s_max']:.2f}</td>
-<td class="n">{q8cell('tok_per_s_min')}–{q8cell('tok_per_s_max')}</td></tr>
-<tr><td>Checks passed (of 10)</td><td class="n">{q4['passes']}/10</td><td class="n">{f"{q8['passes']}/10" if q8 else '—'}</td></tr>
+<td class="n">{q3cell('tok_per_s_min')}–{q3cell('tok_per_s_max')}</td></tr>
+<tr><td>Checks passed (of 10)</td><td class="n">{q4['passes']}/10</td><td class="n">{f"{q3['passes']}/10" if q3 else '—'}</td></tr>
 </table>
 
 <p>The tok/s spread is real, not noise I am hiding: on two physical cores that are also running Windows and an
@@ -281,13 +289,16 @@ Grouped-query attention (16 query heads share 2 KV heads) cuts it 8× versus ful
 20 users means 20×, which is why a serving plan is a KV-budget plan, not a weights plan.</p>
 
 <p><b>Quantisation.</b> fp16 stores 2 bytes per weight, so 3.09B parameters would need ~6.2 GB. Q8_0 keeps 8 bits
-plus one scale per 32-weight block (~8.5 bits/weight) → 3.37 GB measured. Q4_K_M mixes 4-bit and 6-bit tensors with
-per-block scales and minimums → 1.96 GB, ~5.2 effective bits/weight. The saving is close to linear in bits, with a
-small overhead for block metadata. Crucially, quantisation changes <i>weights only</i>: the KV cache and the
-activations are separate allocations, so the KV number is identical for both models, and you can quantise the KV
-cache independently (<span class="mono">--cache-type-k q8_0 --cache-type-v q8_0</span>) to halve it. Q8 is
-near-lossless; Q4 is where long-tail knowledge and surface constraints start to wobble. Decoding is
-bandwidth-bound, so reading 2 GB per token is faster than reading 3.4 GB — Q4 should also win on speed.</p>
+plus one scale per 32-weight block (~8.5 bits/weight) → 3.37 GiB: it does not fit here. Q6_K keeps 6 bits with
+8-bit block scales → 2.60 GiB: it loads, but pages at 0.06 tok/s. Q4_K_M mixes 4-bit and 6-bit tensors with
+per-block scales and minimums → 1.96 GB. Q3_K_M keeps ~3 bits, with a few 4- and 5-bit tensors → ~1.6 GiB. The
+file sizes track bits per weight almost linearly, with a small overhead for block metadata. Crucially,
+quantisation changes <i>weights only</i>: the KV cache and the activations are separate allocations, so the KV
+number is identical for both models, and you can quantise the KV cache independently
+(<span class="mono">--cache-type-k q8_0 --cache-type-v q8_0</span>) to halve it. The standard expectation is that
+Q8_0 and Q6_K are close to lossless and Q4/Q3 are where long-tail knowledge and surface constraints start to
+wobble; the 10-prompt comparison is my measurement of the Q4→Q3 step. Decoding is bandwidth-bound, so reading
+1.6 GB per token should be faster than reading 2.0 GB.</p>
 
 <h3>20 concurrent users on one 24 GB GPU</h3>
 <p>The 3B model is the wrong size for this question, so the plan uses Qwen2.5-7B-Instruct at Q4_K_M (~4.1 GiB
@@ -313,7 +324,9 @@ page-cache paging, which is why the runner does an explicit warm-up and excludes
 not a benchmark — enough to catch a broken quantisation, not enough to rank two good ones. Task 2's n=15 means one
 question moves recall by 6.7 pp, and my questions are term-anchored. With more time: paraphrase the Task 2
 questions and add a cross-encoder re-ranker; sweep LoRA r on Task 1 instead of arguing from parameter counts; and
-run Task 3 on a machine where Q8_0 (3.4 GB) is not fighting Windows for 7.7 GB of RAM.</p>
+run Task 3 on a machine where Q8_0 (3.37 GiB) is not fighting Windows for 7.7 GB of RAM — here it could not
+complete a forward pass, and Q6_K (2.60 GiB) managed only 0.06 tok/s, which is why the second setting is smaller
+than the first, not larger.</p>
 
 <p class="small">Repo: <span class="mono">task1-lora/</span> (train.py, eval.py, eval_zero.py, results/, REPORT_task1.md) ·
 <span class="mono">task2-rag/</span> (extract.py, chunk.py, search.py, bm25.py, analyze.py, analyze2.py, questions.json,

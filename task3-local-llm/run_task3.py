@@ -1,7 +1,7 @@
 """Run the 10-prompt suite against one or both GGUF quantisations.
 
 Usage:  python run_task3.py q4_k_m
-        python run_task3.py q8_0
+        python run_task3.py q3_k_m
 
 Starts llama-server, waits for /health, sends every prompt with temperature 0,
 records the server's own timings, then measures peak working set of the process.
@@ -15,7 +15,7 @@ LLAMA = os.path.join(HERE, "tools", "llama")
 SERVER = os.path.join(LLAMA, "llama-server.exe")
 MODELS = {
     "q4_k_m": os.path.join(HERE, "models", "qwen2.5-3b-instruct-q4_k_m.gguf"),
-    "q8_0": os.path.join(HERE, "models", "qwen2.5-3b-instruct-q8_0.gguf"),
+    "q3_k_m": os.path.join(HERE, "models", "qwen2.5-3b-instruct-q3_k_m.gguf"),
 }
 PORT = 8091
 BASE = f"http://127.0.0.1:{PORT}"
