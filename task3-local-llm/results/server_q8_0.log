@@ -1,0 +1,13 @@
+0.00.016.739 I srv  llama_server: initializing ...
+0.00.119.669 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.131.150 I srv  init_listene: The UI is disabled
+0.00.131.158 I srv  init_listene: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
+0.00.134.493 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.145.519 I srv    load_model: loading model 'C:\Users\Chetan\tndrr-assignment\task3-local-llm\models\qwen2.5-3b-instruct-q8_0.gguf'
+0.00.900.908 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.06.784.410 I cmn          init: llama threadpool init, n_threads = 4
+1.22.937.667 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+1.22.990.913 I srv  server_run_i: model loaded
+1.22.992.055 I srv  server_on_li: listening on http://127.0.0.1:8091
+1.27.485.843 I slot       select: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1
+1.27.489.548 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0

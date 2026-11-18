@@ -1,0 +1,10 @@
+# large / regenerated
+task3-local-llm/models/
+task3-local-llm/tools/
+report/preview/
+
+# python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/

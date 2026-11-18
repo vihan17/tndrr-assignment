@@ -1,0 +1,40 @@
+{
+  "model": "lora_r16 final run (maxlen 128), held-out test n=300",
+  "wrong": 18,
+  "accuracy": 0.94,
+  "confusion_counts": {
+    "card_arrival -> card_delivery_estimate": 4,
+    "fiat_currency_support -> exchange_via_app": 3,
+    "card_arrival -> lost_or_stolen_card": 1,
+    "exchange_rate -> exchange_charge": 1,
+    "card_payment_wrong_exchange_rate -> card_payment_fee_charged": 1,
+    "extra_charge_on_statement -> card_payment_fee_charged": 1,
+    "extra_charge_on_statement -> transfer_fee_charged": 1,
+    "extra_charge_on_statement -> reverted_card_payment?": 1,
+    "pending_cash_withdrawal -> declined_cash_withdrawal": 1,
+    "fiat_currency_support -> supported_cards_and_currencies": 1,
+    "fiat_currency_support -> reverted_card_payment?": 1,
+    "fiat_currency_support -> country_support": 1,
+    "card_delivery_estimate -> card_arrival": 1
+  },
+  "cases": [
+    { "text": "How do I locate my card?", "gold": "card_arrival", "pred": "lost_or_stolen_card" },
+    { "text": "Is there a way to know when my card will arrive?", "gold": "card_arrival", "pred": "card_delivery_estimate" },
+    { "text": "When will I get my card?", "gold": "card_arrival", "pred": "card_delivery_estimate" },
+    { "text": "I have been waiting longer than expected for my bank card, could you provide information?", "gold": "card_arrival", "pred": "card_delivery_estimate" },
+    { "text": "How do I know when my card will arrive?", "gold": "card_arrival", "pred": "card_delivery_estimate" },
+    { "text": "How much will I get with the exchange rate?", "gold": "exchange_rate", "pred": "exchange_charge" },
+    { "text": "Why am I being charged more ?", "gold": "card_payment_wrong_exchange_rate", "pred": "card_payment_fee_charged" },
+    { "text": "Where did this fee come from?", "gold": "extra_charge_on_statement", "pred": "card_payment_fee_charged" },
+    { "text": "There is an extra charge on my app that I was not told about or I was aware of!", "gold": "extra_charge_on_statement", "pred": "transfer_fee_charged" },
+    { "text": "It's been two weeks, why has the transaction for $1.00 not been reversed?", "gold": "extra_charge_on_statement", "pred": "reverted_card_payment?" },
+    { "text": "My account was charged for a withdraw I tried to make that was decline.", "gold": "pending_cash_withdrawal", "pred": "declined_cash_withdrawal" },
+    { "text": "If I request that my funds be held, what currencies do you use?", "gold": "fiat_currency_support", "pred": "supported_cards_and_currencies" },
+    { "text": "There is an incoming payment into my account, but it is deactivated. Will they still be processed?", "gold": "fiat_currency_support", "pred": "reverted_card_payment?" },
+    { "text": "Do you offer additional currency options?", "gold": "fiat_currency_support", "pred": "exchange_via_app" },
+    { "text": "Am I able to exchange currencies?", "gold": "fiat_currency_support", "pred": "exchange_via_app" },
+    { "text": "Can I exchange currencies?", "gold": "fiat_currency_support", "pred": "exchange_via_app" },
+    { "text": "What countries can I travel to and have access to their currencies?", "gold": "fiat_currency_support", "pred": "country_support" },
+    { "text": "my card was not in the mail again can you advise?", "gold": "card_delivery_estimate", "pred": "card_arrival" }
+  ]
+}

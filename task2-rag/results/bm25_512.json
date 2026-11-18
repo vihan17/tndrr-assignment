@@ -1,0 +1,215 @@
+{
+ "size": 512,
+ "n_chunks": 62,
+ "rows": [
+  {
+   "id": 1,
+   "dense": 1,
+   "bm25": 2,
+   "hybrid": 1,
+   "bm25_top5_pages": [
+    44,
+    25,
+    4,
+    47,
+    39
+   ]
+  },
+  {
+   "id": 2,
+   "dense": 1,
+   "bm25": 1,
+   "hybrid": 1,
+   "bm25_top5_pages": [
+    25,
+    8,
+    23,
+    44,
+    6
+   ]
+  },
+  {
+   "id": 3,
+   "dense": 1,
+   "bm25": 1,
+   "hybrid": 1,
+   "bm25_top5_pages": [
+    12,
+    38,
+    28,
+    35,
+    10
+   ]
+  },
+  {
+   "id": 4,
+   "dense": 4,
+   "bm25": null,
+   "hybrid": null,
+   "bm25_top5_pages": [
+    47,
+    44,
+    7,
+    7,
+    8
+   ]
+  },
+  {
+   "id": 5,
+   "dense": 4,
+   "bm25": 1,
+   "hybrid": 2,
+   "bm25_top5_pages": [
+    14,
+    18,
+    22,
+    44,
+    43
+   ]
+  },
+  {
+   "id": 6,
+   "dense": 2,
+   "bm25": 3,
+   "hybrid": 1,
+   "bm25_top5_pages": [
+    22,
+    6,
+    10,
+    13,
+    28
+   ]
+  },
+  {
+   "id": 7,
+   "dense": null,
+   "bm25": 2,
+   "hybrid": 4,
+   "bm25_top5_pages": [
+    10,
+    24,
+    28,
+    39,
+    11
+   ]
+  },
+  {
+   "id": 8,
+   "dense": 1,
+   "bm25": 1,
+   "hybrid": 1,
+   "bm25_top5_pages": [
+    43,
+    6,
+    32,
+    44,
+    4
+   ]
+  },
+  {
+   "id": 9,
+   "dense": null,
+   "bm25": null,
+   "hybrid": null,
+   "bm25_top5_pages": [
+    6,
+    17,
+    14,
+    4,
+    34
+   ]
+  },
+  {
+   "id": 10,
+   "dense": 3,
+   "bm25": 3,
+   "hybrid": 2,
+   "bm25_top5_pages": [
+    7,
+    12,
+    8,
+    13,
+    47
+   ]
+  },
+  {
+   "id": 11,
+   "dense": null,
+   "bm25": 1,
+   "hybrid": 5,
+   "bm25_top5_pages": [
+    14,
+    15,
+    5,
+    25,
+    40
+   ]
+  },
+  {
+   "id": 12,
+   "dense": 4,
+   "bm25": null,
+   "hybrid": null,
+   "bm25_top5_pages": [
+    3,
+    27,
+    18,
+    19,
+    13
+   ]
+  },
+  {
+   "id": 13,
+   "dense": 4,
+   "bm25": 1,
+   "hybrid": 1,
+   "bm25_top5_pages": [
+    35,
+    43,
+    22,
+    19,
+    10
+   ]
+  },
+  {
+   "id": 14,
+   "dense": 2,
+   "bm25": 6,
+   "hybrid": 2,
+   "bm25_top5_pages": [
+    39,
+    37,
+    4,
+    28,
+    36
+   ]
+  },
+  {
+   "id": 15,
+   "dense": null,
+   "bm25": 1,
+   "hybrid": 3,
+   "bm25_top5_pages": [
+    33,
+    36,
+    29,
+    37,
+    18
+   ]
+  }
+ ],
+ "summary": {
+  "dense": {
+   "recall@5": 0.7333,
+   "mrr@5": 0.4222
+  },
+  "bm25": {
+   "recall@5": 0.8,
+   "mrr@5": 0.5889
+  },
+  "hybrid_rrf": {
+   "recall@5": 0.8,
+   "mrr@5": 0.5522
+  }
+ }
+}

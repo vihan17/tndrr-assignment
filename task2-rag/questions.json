@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "q": "What does the AI RMF Core provide?",
+    "gold_page": 25,
+    "gold_quote": "The AI RMF Core provides outcomes and actions that enable dialogue, understanding, and activities to manage AI risks and responsibly develop trustworthy AI systems."
+  },
+  {
+    "id": 2,
+    "q": "Which four functions make up the AI RMF Core?",
+    "gold_page": 25,
+    "gold_quote": "As illustrated in Figure 5, the Core is composed of four functions: GOVERN, MAP, MEASURE, and MANAGE."
+  },
+  {
+    "id": 3,
+    "q": "How does the framework define risk tolerance?",
+    "gold_page": 12,
+    "gold_quote": "Risk tolerance refers to the organization’s or AI actor’s (see Appendix A) readiness to bear the risk in order to achieve its objectives."
+  },
+  {
+    "id": 4,
+    "q": "Which part of the framework is meant to be applied across all the other parts rather than in sequence?",
+    "gold_page": 25,
+    "gold_quote": "Governance is designed to be a cross-cutting function to inform and be infused throughout the other three functions."
+  },
+  {
+    "id": 5,
+    "q": "What does the NIST modification of the lifecycle model highlight the importance of?",
+    "gold_page": 14,
+    "gold_quote": "The NIST modification highlights the importance of test, evaluation, verification, and validation (TEVV) processes throughout an AI lifecycle and generalizes the operational context of an AI system."
+  },
+  {
+    "id": 6,
+    "q": "Why are AI risks that are not well-defined hard to deal with?",
+    "gold_page": 10,
+    "gold_quote": "AI risks or failures that are not well-defined or adequately understood are difficult to measure quantitatively or qualitatively."
+  },
+  {
+    "id": 7,
+    "q": "What does NIST say about measuring whether the AI RMF itself works?",
+    "gold_page": 24,
+    "gold_quote": "Evaluations of AI RMF effectiveness – including ways to measure bottom-line improvements in the trustworthiness of AI systems – will be part of future NIST activities, in conjunction with the AI community."
+  },
+  {
+    "id": 8,
+    "q": "How do the scope and impact of AI technology risks compare with traditional software risks?",
+    "gold_page": 43,
+    "gold_quote": "As with traditional software, risks from AI-based technology can be bigger than an enterprise, span organizations, and lead to societal impacts."
+  },
+  {
+    "id": 9,
+    "q": "Which characteristics of trustworthy AI are listed in the Executive Summary?",
+    "gold_page": 8,
+    "gold_quote": "valid and reliable, safe, secure and resilient, accountable and transparent, explainable and interpretable, privacy enhanced, and fair with their harmful biases managed"
+  },
+  {
+    "id": 10,
+    "q": "Where can additional resources related to the Framework be found?",
+    "gold_page": 8,
+    "gold_quote": "Additional resources related to the Framework are included in the AI RMF Playbook, which is available via the NIST AI RMF website"
+  },
+  {
+    "id": 11,
+    "q": "What are the AI dimensions displayed in Figure 2?",
+    "gold_page": 14,
+    "gold_quote": "AI dimensions displayed in Figure 2 are the Application Context, Data and Input, AI Model, and Task and Output."
+  },
+  {
+    "id": 12,
+    "q": "What is required for reviewing the risk management process on a schedule?",
+    "gold_page": 28,
+    "gold_quote": "GOVERN 1.5: Ongoing monitoring and periodic review of the risk management process and its outcomes are planned and organizational roles and responsibilities clearly defined, including determining the frequency of periodic review."
+  },
+  {
+    "id": 13,
+    "q": "What does MEASURE 2.6 require of the AI system?",
+    "gold_page": 35,
+    "gold_quote": "MEASURE 2.6: The AI system is evaluated regularly for safety risks – as identified in the MAP function."
+  },
+  {
+    "id": 14,
+    "q": "What does MANAGE 4 cover?",
+    "gold_page": 38,
+    "gold_quote": "MANAGE 4: Risk treatments, including response and recovery, and communication plans for the identified and measured AI risks are documented and monitored regularly."
+  },
+  {
+    "id": 15,
+    "q": "What is required for regularly engaging relevant AI actors and integrating their feedback?",
+    "gold_page": 33,
+    "gold_quote": "MAP 5.2: Practices and personnel for supporting regular engagement with relevant AI actors and integrating feedback about positive, negative, and unanticipated impacts are in place and documented."
+  }
+]

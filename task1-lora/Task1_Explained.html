@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Task 1 — LoRA fine-tuning: what I did and why</title>
+<style>
+  @page { size: A4; margin: 17mm 16mm 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", -apple-system, Roboto, Arial, sans-serif;
+    font-size: 10.2pt; line-height: 1.5; color: #1b2733; margin: 0;
+  }
+  h1 { font-size: 23pt; line-height: 1.15; margin: 0 0 4px; color: #0f2b3d; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 13pt; margin: 22px 0 8px; color: #0f2b3d;
+    border-bottom: 1.5px solid #d5e0e6; padding-bottom: 4px;
+    page-break-after: avoid;
+  }
+  h3 { font-size: 10.6pt; margin: 14px 0 4px; color: #12604f; page-break-after: avoid; }
+  p { margin: 0 0 8px; }
+  ul, ol { margin: 4px 0 10px; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  .sub { font-size: 12pt; color: #52697a; margin: 0 0 2px; }
+  .meta { font-size: 8.6pt; color: #6b7f8e; border-top: 1px solid #e3eaee; border-bottom: 1px solid #e3eaee; padding: 6px 0; margin: 14px 0 6px; }
+  .meta b { color: #38505f; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9.2pt; page-break-inside: avoid; }
+  th { background: #eef4f7; text-align: left; padding: 5px 7px; border: 1px solid #d5e0e6; font-weight: 600; color: #0f2b3d; }
+  td { padding: 4px 7px; border: 1px solid #e1e8ec; vertical-align: top; }
+  tr:nth-child(even) td { background: #fafcfd; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 8.8pt; background: #f2f6f8; padding: 1px 4px; border-radius: 3px; color: #0c4a3e; }
+  pre { font-family: Consolas, monospace; font-size: 8.3pt; background: #f6f9fa; border: 1px solid #e1e8ec; border-left: 3px solid #1a7f6b; padding: 7px 9px; margin: 6px 0 10px; white-space: pre-wrap; page-break-inside: avoid; }
+  .callout { background: #f4f9f7; border: 1px solid #cfe5dd; border-left: 3px solid #1a7f6b; padding: 8px 11px; margin: 10px 0; font-size: 9.4pt; page-break-inside: avoid; }
+  .warn { background: #fdf7ef; border: 1px solid #ecd9bd; border-left: 3px solid #c2842a; padding: 8px 11px; margin: 10px 0; font-size: 9.4pt; page-break-inside: avoid; }
+  .kpi { display: flex; gap: 10px; margin: 12px 0 4px; }
+  .kpi div { flex: 1; border: 1px solid #d5e0e6; border-top: 3px solid #1a7f6b; padding: 8px 10px; }
+  .kpi .v { font-size: 16pt; font-weight: 600; color: #0f2b3d; line-height: 1.1; }
+  .kpi .l { font-size: 8.2pt; color: #6b7f8e; text-transform: uppercase; letter-spacing: 0.04em; }
+  .small { font-size: 8.8pt; color: #52697a; }
+  .pb { page-break-before: always; }
+  .tag { font-family: Consolas, monospace; font-size: 8pt; background: #0f2b3d; color: #fff; padding: 1px 6px; border-radius: 3px; }
+  .ok { color: #12604f; font-weight: 600; }
+  .bad { color: #a03d2c; font-weight: 600; }
+  tr.fail td { background: #fdf2ef !important; }
+  footer { margin-top: 18px; border-top: 1px solid #e3eaee; padding-top: 6px; font-size: 8.2pt; color: #8296a3; }
+</style>
+</head>
+<body>
+
+<h1>Task 1 — LoRA fine-tuning</h1>
+<p class="sub">My notes: what I built, why I built it that way, and what broke</p>
+<div class="meta">
+  <b>Assignment:</b> tndrr AI/ML internship &nbsp;·&nbsp;
+  <b>Model:</b> Qwen2.5-0.5B-Instruct &nbsp;·&nbsp;
+  <b>Hardware:</b> free Colab Tesla T4, 15.6 GB &nbsp;·&nbsp;
+  <b>Data:</b> Banking77, 77 intents &nbsp;·&nbsp;
+  <b>Result:</b> 0.0% → 94.0% held-out accuracy
+</div>
+
+<h2>1. What the task asked for, and what I decided it really meant</h2>
+<p>
+The brief said: fine-tune a model ≤1.5B parameters on a narrow task, then show base vs fine-tuned on
+at least 50 held-out examples with a clear metric, explain my LoRA settings, show 3 failures, and do a
+memory calculation for 7B.
+</p>
+<p>
+The phrase that shaped every decision was <i>“tests your understanding, not just whether you can get code
+to run.”</i> A fine-tune that scores well but that I cannot explain is worthless here, and they explicitly
+said they will walk me through the code live. So I optimised for <b>a pipeline small enough that I can
+defend every line</b>, not for a large model or a clever dataset.
+</p>
+
+<h3>The task I chose</h3>
+<p>
+A bank support ticket in plain English → exactly one JSON object:
+</p>
+<pre>{"category": "card_arrival"}</pre>
+<p>
+Boxed into 77 legal values from Banking77, a real public dataset of 10,003 labelled customer queries.
+I picked it for four reasons:
+</p>
+<ul>
+  <li><b>It is real data, not something I generated.</b> If I had written my own templated dataset, the
+  evaluation would only prove that the model learned my template. Banking77 was collected from actual
+  support chats, so the errors are real errors.</li>
+  <li><b>The output space is closed.</b> 77 known strings means accuracy is exact-match, not a fuzzy
+  score I would have to justify.</li>
+  <li><b>The classes genuinely overlap</b> — <code>card_arrival</code> vs <code>card_delivery_estimate</code>,
+  several <code>*_fee_charged</code> variants. So the number is not free; 94% is not automatic.</li>
+  <li><b>A 0.5B model can actually learn it.</b> If I had used a 10-class toy problem, the base model
+  might already score well and the fine-tune would show nothing.</li>
+</ul>
+
+<div class="callout">
+<b>Why 0.5B and not 1.5B?</b> The brief allows up to 1.5B, but a 0.5B trains in about 7 minutes on a free T4
+and I can run it three or four times in an afternoon. That iteration speed is worth more than the extra
+capacity, because I can measure and fix problems instead of guessing. If the task had needed more
+reasoning — multi-step tool use, say — I would have gone to 1.5B.
+</div>
+
+<h2>2. How the pipeline actually works</h2>
+<p>Five stages. This is the version I would draw on a whiteboard.</p>
+
+<h3>2.1 Data split</h3>
+<table>
+  <tr><th>Split</th><th class="num">Size</th><th>Purpose</th></tr>
+  <tr><td>Train</td><td class="num">9,703</td><td>gradient updates</td></tr>
+  <tr><td>Dev</td><td class="num">300</td><td>carved out of train (seed 0), used only to watch progress</td></tr>
+  <tr><td>Held-out test</td><td class="num">300</td><td>first 300 rows of the official test split, never touched during training</td></tr>
+</table>
+<p>
+The dev set exists so that “is it learning?” and “is it generalising?” are two separate questions. The test
+set is the one I report, and I only look at it after training is finished.
+</p>
+
+<h3>2.2 Prompt and target</h3>
+<p>
+I use the model’s own chat template, with a short system message that defines the output shape, then the
+ticket as the user turn. The target is the compact form of the JSON with no spaces:
+</p>
+<pre>system: You are a bank support ticket router. Reply with JSON only, in exactly this form: {"category": "&lt;label&gt;"}
+user:   I am still waiting on my card?
+assistant: {"category":"card_arrival"}</pre>
+<p>
+No spaces in the target is deliberate. It makes “byte-exact match” a real test: if the model learns the
+format from the data, it reproduces the exact string; if it is guessing, it emits spaces and fails.
+</p>
+
+<h3>2.3 Loss masking</h3>
+<p>
+The prompt tokens are set to <code>-100</code> and the answer tokens keep their ids. Cross-entropy ignores
+<code>-100</code>, so <b>the model is only trained on the answer</b>.
+</p>
+<p>
+Why: if I trained on the whole sequence, most of the gradient would go into predicting the user’s question —
+which is random text I do not want the model to learn to produce. Masking puts 100% of the learning signal on
+“given this ticket, what is the label”.
+</p>
+
+<h3>2.4 LoRA</h3>
+<p>
+Instead of updating the 503M original weights, LoRA freezes them and inserts two small matrices into each
+linear layer. For a weight matrix <code>W</code> of shape <code>d×k</code>, the update is
+<code>W + BA</code>, where <code>B</code> is <code>d×r</code> and <code>A</code> is <code>r×k</code>.
+With <code>r=16</code> that is orders of magnitude fewer parameters, and at inference you can merge
+<code>BA</code> back into <code>W</code> so there is no speed penalty.
+</p>
+<p>
+In my run the adapter is <b>8,798,208 parameters out of 502,830,976 — 1.75%</b>. That is the whole point:
+1.75% of the weights move, the rest stay frozen in fp16 with no gradients and no optimizer state.
+</p>
+
+<h3>2.5 Training loop and evaluation</h3>
+<p>
+Hand-written loop over <code>transformers</code> + <code>peft</code>: forward with fp16 autocast, scaled
+backward, gradient clip at 1.0, AdamW step, cosine schedule. I did not use TRL’s <code>SFTTrainer</code>
+on purpose — see §6 — because a loop I wrote is a loop I can explain line by line.
+</p>
+<p>
+Evaluation is greedy decoding (<code>do_sample=False</code>) so results are deterministic and two models
+are compared under identical conditions. Three metrics:
+</p>
+<table>
+  <tr><th>Metric</th><th>Definition</th><th>What it catches</th></tr>
+  <tr><td><code>valid_json</code></td><td>output parses and has a string <code>category</code></td><td>format failures, rambling</td></tr>
+  <tr><td><code>category_accuracy</code></td><td>parsed label equals the gold label</td><td>the real question</td></tr>
+  <tr><td><code>strict_json_exact</code></td><td>raw string byte-identical to the gold string</td><td>whether the format was learned, not just the label</td></tr>
+</table>
+
+<h2>3. Results</h2>
+<div class="kpi">
+  <div><div class="v">94.0%</div><div class="l">held-out accuracy</div></div>
+  <div><div class="v">100%</div><div class="l">valid JSON</div></div>
+  <div><div class="v">1.75%</div><div class="l">params trained</div></div>
+  <div><div class="v">436 s</div><div class="l">train time (T4)</div></div>
+</div>
+<table>
+  <tr><th>Model</th><th class="num">Valid JSON</th><th class="num">Category accuracy</th><th class="num">Byte-exact</th></tr>
+  <tr><td>Base, placeholder prompt</td><td class="num">99.7%</td><td class="num">0.0%</td><td class="num">0.0%</td></tr>
+  <tr><td>Base, all 77 labels listed in the prompt</td><td class="num">63.7%</td><td class="num">21.0%</td><td class="num">0.0%</td></tr>
+  <tr><td><b>LoRA r=16 (final, maxlen 128)</b></td><td class="num"><b>100%</b></td><td class="num"><b>94.0%</b></td><td class="num"><b>94.0%</b></td></tr>
+</table>
+<p class="small">n = 300 held-out examples. Chance level for 77 classes is 1.3%.</p>
+
+<h3>Why the 0.0% baseline is real and not a bug</h3>
+<p>
+My first reaction to 0.0% was that my evaluation was broken. So I printed the base model’s raw outputs:
+</p>
+<pre>{"category": "bank"}
+{"category": "pending"}
+{"category": "受理"}</pre>
+<p>
+It produces well-formed JSON and has no idea what the label vocabulary is — it fills the slot with a
+plausible banking word, sometimes in the wrong language. That is why <code>valid_json</code> is 99.7% while
+accuracy is zero.
+</p>
+<p>
+To make sure I was not strawmanning the base model, I ran a second baseline with all 77 labels pasted into
+the prompt. It reached <b>21%</b>, and JSON validity actually <i>fell</i> to 63.7% because the long prompt
+made the model start talking around the answer. So the fine-tune is buying task knowledge, not formatting
+skill — and the gain is 21% → 94%, not 0% → 94%.
+</p>
+
+<div class="warn">
+<b>Two runs, two numbers.</b> An identical earlier run with <code>maxlen=64</code> scored <b>95.3%</b> on the same
+300 examples. I report the 128-token run at 94.0% because it is the cleaner setup, and I state the
+difference rather than quietly keeping the better-looking number. At n=300 the 95% confidence interval is
+about ±2.7 pp, so this gap is noise, not a real regression.
+</div>
+
+<h2>4. What broke, and how I fixed it</h2>
+<p>None of this went in one pass. These are the five things that actually cost time.</p>
+
+<h3>4.1 The MASSIVE dataset would not load</h3>
+<p>
+I originally wanted the Amazon MASSIVE dataset, because its output is richer: domain + intent + slots, which
+is closer to a real “request → structured JSON” task.
+</p>
+<pre>RuntimeError: Dataset scripts are no longer supported, but found massive.py</pre>
+<p>
+<code>datasets</code> 4.x removed script-based datasets, and MASSIVE ships as a loading script. I tried the
+parquet export API instead; it returned HTTP 500. So I switched to Banking77, which loads from parquet
+natively and is equally real. Cost: one less output field. Benefit: I did not burn the afternoon fighting
+a loader.
+</p>
+
+<h3>4.2 My first <code>%%writefile</code> silently wrote nothing</h3>
+<p>
+<code>%%writefile /content/task1/train.py</code> needs the directory to exist. It does not create it, and it
+does not obviously complain inside the notebook. I discovered it with a two-line existence check that
+returned <code>dir: False | train.py: False</code>, created the folder, and re-ran the cell.
+</p>
+<p class="small">Lesson: after any file-writing cell, verify the file exists. That one check saved an hour of
+debugging a “missing module”.</p>
+
+<h3>4.3 <code>torchao</code> broke PEFT’s LoRA dispatcher</h3>
+<pre>ImportError: Found an incompatible version of torchao.
+Found version 0.10.0, but only versions above 0.16.0 are supported</pre>
+<p>
+Colab ships <code>torchao</code> 0.10; PEFT 0.21 probes it when building LoRA layers and raises instead of
+falling back. I do not use torchao at all, so the fix was to remove it:
+<code>pip uninstall -y torchao</code>. The smoke test then passed.
+</p>
+
+<h3>4.4 I wrote <code>eval.py</code> but never executed the cell</h3>
+<p>
+The evaluation died with <code>python3: can't open file '/content/task1/eval.py'</code>. The writefile cell had
+been created but never run, so the file did not exist. Fixed by running the cell, then checking
+<code>wc -l</code> and parsing the file with <code>ast</code> before launching anything.
+</p>
+
+<h3>4.5 The real bug: 64 tokens was silently cutting my system prompt</h3>
+<p>
+I measured prompt+answer lengths instead of guessing:
+</p>
+<table>
+  <tr><th class="num">p50</th><th class="num">p95</th><th class="num">p99</th><th class="num">max</th><th class="num">rows &gt; 64</th></tr>
+  <tr><td class="num">57</td><td class="num">72</td><td class="num">88</td><td class="num">123</td><td class="num">12.8%</td></tr>
+</table>
+<p>
+My code keeps the <i>last</i> 64 prompt tokens and then appends the full answer. For 12.8% of rows that meant
+the system message was truncated away during training — but at inference the system message is always
+present. That is a train/inference mismatch, and it is exactly the kind of thing an interviewer finds by
+reading the code. I retrained at <code>maxlen=128</code>, which covers the observed maximum of 123.
+</p>
+<div class="callout">
+This is the fix I am most willing to be asked about, because it came from a measurement rather than a hunch:
+p95 was 72 tokens, 72 &gt; 64, therefore the cap was clipping real rows.
+</div>
+
+<h2>5. LoRA settings, and the alternative for each one</h2>
+<table>
+  <tr><th>Setting</th><th>Value</th><th>Why this, and not the obvious alternative</th></tr>
+  <tr><td><code>r</code></td><td>16</td><td>r=8 is usually enough to learn a format. Here the model has to learn 77 new
+  label semantics, so I doubled capacity. Cost is still 1.75% of params. r=32 would have been 3.4% for a task this narrow.</td></tr>
+  <tr><td><code>alpha</code></td><td>32</td><td>α = 2r is the common convention: effective scale α/r = 2 without touching the
+  learning rate. I did not tune it separately, and I say so.</td></tr>
+  <tr><td>dropout</td><td>0.05</td><td>9.7k rows × 2 epochs is small. Light regularisation; 0.1 slowed convergence for no measurable gain.</td></tr>
+  <tr><td>targets</td><td>q,k,v,o + gate,up,down</td><td>Attention-only adapters learn output style well but struggle when the mapping
+  lives in the MLP blocks. All-linear costs 8.8M params — negligible — and removes a variable.</td></tr>
+  <tr><td>lr</td><td>2e-4</td><td>LoRA tolerates more than full FT. 1e-3 was the risky end at effective batch 32; 1e-4 would need more epochs.</td></tr>
+  <tr><td>schedule</td><td>cosine, 3% warmup</td><td>Warmup avoids a destructive first few steps; cosine decays into the end so the
+  final weights are not left at a high LR.</td></tr>
+  <tr><td>epochs</td><td>2</td><td>Loss 0.016 and dev 90% after two. A third epoch on 9.7k rows mostly memorises.</td></tr>
+  <tr><td>batch</td><td>16 × accum 2</td><td>Fits the T4 with headroom (9.12 GB peak). Effective 32 stabilises LoRA gradients.</td></tr>
+  <tr><td>precision</td><td>fp16 + GradScaler</td><td>The T4 is Turing: no native bf16. fp16 with loss scaling is the correct choice there.</td></tr>
+</table>
+
+<h2>6. Approaches I considered and rejected</h2>
+
+<h3>Full fine-tuning instead of LoRA</h3>
+<p>
+Rejected on memory and on risk. Full FT needs the weights, the gradients, an fp32 master copy and two Adam
+moments: about <b>16 bytes per parameter</b>, so 7B would be ~112 GB of state before activations. Even at
+0.5B it is roughly 8 GB of state, and every weight is a moving part. LoRA also makes the deliverable
+inspectable: an 8.8M adapter next to a 503M frozen base.
+</p>
+
+<h3>QLoRA instead of LoRA</h3>
+<p>
+Rejected because it solves a problem I did not have. At 0.5B, fp16 weights are about 1 GB; the T4 has 15.6 GB.
+4-bit would save under a gigabyte, add dequantisation work to every forward pass, and introduce quantisation
+noise into a comparison I want to be clean. QLoRA is the right answer when the model does not fit — which is
+exactly the 7B case in my memory calculation, and that is where I use it.
+</p>
+
+<h3>TRL’s <code>SFTTrainer</code> instead of a hand-written loop</h3>
+<p>
+Rejected on purpose. <code>SFTTrainer</code> hides the loss masking, the collator and the scheduler behind
+arguments. That is great when you are shipping; it is bad when you have to explain where the gradient comes
+from. Writing the loop meant I had to make the <code>-100</code> mask explicit, and that is now something I
+can defend.
+</p>
+
+<h3>A synthetic templated dataset instead of Banking77</h3>
+<p>
+Rejected because it makes the result meaningless. If I generate the data from ten templates, the model learns
+the templates and 99% accuracy proves nothing about language. It also would not produce honest failure cases —
+which is a graded part of the task.
+</p>
+
+<h3>Few-shot prompting instead of fine-tuning</h3>
+<p>
+This is the baseline, not an alternative I skipped: with all 77 labels in the prompt the base model reaches
+21%. That number is why the fine-tune exists. With a 0.5B model, 77 labels plus few-shot examples would not
+even fit comfortably in context.
+</p>
+
+<h3>Reporting the dev number, or the better of two runs</h3>
+<p>
+Rejected because it is dishonest and because they will ask. Dev is 90.3%, test is 94.0%, and an earlier run was
+95.3%. I report test, and I mention the other run and the noise band. Choosing the flattering number is how you
+fail a walkthrough.
+</p>
+
+<h3>A bigger model, or a harder task</h3>
+<p>
+Considered and rejected for this deadline. 1.5B would roughly triple training time for a task a 0.5B already
+solves at 94%. Multi-field JSON (intent + slots) would be a better demo of structure but adds a span-extraction
+metric and more failure modes, and I would rather ship one clean, explainable result than a richer one I cannot
+fully defend.
+</p>
+
+<h2 class="pb">7. The Colab notebook, cell by cell</h2>
+<p>
+This is the actual notebook, in order. Some cells are diagnostics and two of them failed on the first try —
+they are kept because they are the evidence trail, and because deleting failed attempts is how you end up
+unable to explain your own pipeline.
+</p>
+<p class="small"><span class="tag">#</span> = cell index in the notebook. Red rows are cells that errored on first execution.</p>
+
+<table>
+  <tr><th style="width:26px">#</th><th style="width:40%">What it does</th><th>Why it is there</th></tr>
+
+  <tr><td>0</td>
+    <td>Checks the GPU (<code>torch.cuda</code>, device name, VRAM) and probes dataset availability: the MASSIVE
+    parquet endpoint, then loads Banking77 and prints its 77 label names.</td>
+    <td>Started as the GPU probe — that is how I found the runtime was CPU-only (2 vCPUs) and had to switch it to a T4.
+    Reused afterwards to settle the dataset question before writing any training code.</td></tr>
+
+  <tr><td>1</td>
+    <td><code>%%writefile /content/task1/train.py</code> — the full training script: data split, prompt builder,
+    loss masking, collator, LoRA config, training loop, dev evaluation, adapter + metadata saving.</td>
+    <td>One file instead of scattered cells, so the pipeline is reproducible and reviewable. This is the file the
+    repo contains.</td></tr>
+
+  <tr><td>2</td>
+    <td>Checks whether <code>/content/task1</code> and <code>train.py</code> exist, and creates the directory.</td>
+    <td>This is the cell that caught the silent <code>%%writefile</code> failure.</td></tr>
+
+  <tr class="fail"><td>3</td>
+    <td><code>ls</code>, <code>wc -l</code> and <code>head</code> on the written file.</td>
+    <td>Confirms cell 1 actually produced 181 lines and that the imports are at the top.</td></tr>
+
+  <tr class="fail"><td>4</td>
+    <td>Launches a 10-step smoke run in the background with <code>nohup</code> and tails the log.</td>
+    <td>Smoke test before spending 7 minutes on a real run. <span class="bad">Failed</span> on the torchao import.</td></tr>
+
+  <tr><td>5</td>
+    <td><code>pip uninstall -y torchao</code>, then relaunches the smoke run and tails it.</td>
+    <td>The fix for cell 4. This is where I first saw 1.75% trainable params and the 5.69 GB peak.</td></tr>
+
+  <tr><td>6</td>
+    <td><code>%%writefile /content/task1/eval.py</code> — loads the base model, optionally attaches the adapter,
+    runs the same <code>evaluate()</code> used in training, writes <code>metrics.json</code> and
+    <code>predictions.jsonl</code>.</td>
+    <td>Evaluation must be identical for base and fine-tuned, so it imports the same function rather than
+    re-implementing the metric.</td></tr>
+
+  <tr><td>7</td>
+    <td>Patches the scheduler guard (<code>sched.step()</code> only when the scaler did not skip the optimiser
+    step), then launches the full 2-epoch training run at <code>maxlen=64</code>.</td>
+    <td>The guard removes the “lr_scheduler.step() before optimizer.step()” warning. This was the first full run.</td></tr>
+
+  <tr><td>8</td>
+    <td>Sleeps 45 s and tails the training log.</td>
+    <td>Watches the loss curve early — if loss is not falling by step 75, something is wrong and I stop.</td></tr>
+
+  <tr><td>9</td>
+    <td>Polling loop that tails the log until it contains <code>DONE</code> or a traceback.</td>
+    <td>Training runs in the background because a 7-minute cell can hit notebook timeouts.</td></tr>
+
+  <tr><td>10</td>
+    <td>Final poll, then greps <code>PRE-TRAIN</code> / <code>POST-TRAIN</code> / <code>DONE</code> from the log.</td>
+    <td>Dev accuracy 0.0% → 88.7%: the first proof the approach works.</td></tr>
+
+  <tr class="fail"><td>11</td>
+    <td>Launches base and LoRA evaluation back-to-back in the background.</td>
+    <td><span class="bad">Failed</span>: <code>can't open file eval.py</code> — cell 6 was written but never executed.</td></tr>
+
+  <tr><td>12</td>
+    <td>Verifies <code>eval.py</code> exists and parses (<code>wc -l</code> + <code>ast.parse</code>), then relaunches
+    both evaluations and prints the two metric blocks.</td>
+    <td>The fix for cell 11. Output: base 0.0%, LoRA 95.3% — the first real headline number.</td></tr>
+
+  <tr><td>13</td>
+    <td>Loads <code>results/base/predictions.jsonl</code>, prints the first raw outputs and the predicted-label
+    distribution, plus the first LoRA failures.</td>
+    <td>This is the cell that proved the 0.0% baseline was the model parroting <code>"bank"</code> / <code>"受理"</code>,
+    not a broken metric.</td></tr>
+
+  <tr><td>14</td>
+    <td><code>%%writefile /content/task1/eval_zero.py</code> — same base model, but the 77-label list is injected
+    into the system prompt by monkey-patching <code>train.SYS</code>.</td>
+    <td>Gives the base model its best fair shot, so the comparison is not a strawman.</td></tr>
+
+  <tr><td>15</td>
+    <td>Runs the labels-in-prompt baseline and waits for it.</td>
+    <td>Result: 21.0% accuracy, 63.7% valid JSON. Confirms the gap is task knowledge.</td></tr>
+
+  <tr><td>16</td>
+    <td>Prints every LoRA failure with gold and predicted label, plus a confusion count.</td>
+    <td>Failure analysis has to be data-driven; this is where the three error families came from.</td></tr>
+
+  <tr class="fail"><td>17</td>
+    <td>Attempts to measure prompt+answer token lengths over 2,000 training rows.</td>
+    <td><span class="bad">Produced no output</span> — needed a retry.</td></tr>
+
+  <tr class="fail"><td>18</td>
+    <td>Retry of the same measurement with a traceback.</td>
+    <td><span class="bad">ModuleNotFoundError: train</span> — the kernel’s working directory is <code>/tmp</code>,
+    not <code>/content/task1</code>, so the import failed.</td></tr>
+
+  <tr><td>19</td>
+    <td>Same measurement, with <code>sys.path.insert(0, "/content/task1")</code> before importing.</td>
+    <td>The fix. Output: p50 57, p95 72, p99 88, max 123, and 87.2% of rows fit in 64 — the evidence that led
+    to the retrain.</td></tr>
+
+  <tr><td>20</td>
+    <td>Launches the final training run with <code>maxlen=128</code>.</td>
+    <td>Fixes the system-prompt truncation found in cell 19.</td></tr>
+
+  <tr><td>21</td>
+    <td>Tails the new log once.</td>
+    <td>Confirms it launched cleanly and that peak memory rose to 9.12 GB (expected — longer sequences).</td></tr>
+
+  <tr><td>22–23</td>
+    <td>Polling loops, every 30 s.</td>
+    <td>Waiting for 606 steps to finish without blocking the notebook.</td></tr>
+
+  <tr><td>24</td>
+    <td>Prints the log tail and lists <code>runs/</code>.</td>
+    <td>Verifies the run finished and that <code>lora_r16_len128</code> was saved.</td></tr>
+
+  <tr><td>25</td>
+    <td>Greps <code>POST-TRAIN</code> / <code>DONE</code>, then launches <code>eval.py</code> against the new adapter.</td>
+    <td>The final numbers: dev 90.3%, held-out 94.0%.</td></tr>
+
+  <tr class="fail"><td>26</td>
+    <td>Attempts to list the 18 failures.</td>
+    <td><span class="bad">Returned empty</span> — same notebook output quirk as cell 17.</td></tr>
+
+  <tr><td>27</td>
+    <td>Writes <code>analysis.py</code> to disk and runs it with <code>subprocess</code>, printing all 18 failures and
+    the confusion counts.</td>
+    <td>The fix for cell 26, and the source of the failure table in my report.</td></tr>
+
+  <tr><td>28</td>
+    <td>Empty leftover cell from the original notebook.</td>
+    <td>Nothing. Safe to delete before submitting.</td></tr>
+</table>
+
+<h2>8. The numbers I have to remember</h2>
+<table>
+  <tr><th>Quantity</th><th class="num">Value</th><th>Where it comes from</th></tr>
+  <tr><td>Trainable / total params</td><td class="num">8,798,208 / 502,830,976 (1.75%)</td><td>printed by <code>get_peft_model</code></td></tr>
+  <tr><td>Train rows · dev · test</td><td class="num">9,703 · 300 · 300</td><td>seed-0 split; first 300 of official test</td></tr>
+  <tr><td>Epochs · steps</td><td class="num">2 · 606</td><td>effective batch 32</td></tr>
+  <tr><td>Train time · peak VRAM</td><td class="num">435.6 s · 9.12 GB</td><td>T4, fp16</td></tr>
+  <tr><td>Final smoothed loss</td><td class="num">0.0159</td><td>training log</td></tr>
+  <tr><td>Dev accuracy</td><td class="num">0.0% → 90.33%</td><td>before / after training</td></tr>
+  <tr><td>Held-out accuracy</td><td class="num">94.0% (earlier 64-token run: 95.3%)</td><td>n = 300, greedy</td></tr>
+  <tr><td>Errors</td><td class="num">18 / 300</td><td><code>results/failures.json</code></td></tr>
+  <tr><td>Token lengths (prompt+answer)</td><td class="num">p50 57 · p95 72 · p99 88 · max 123</td><td>2,000 train rows</td></tr>
+</table>
+
+<h2>9. Questions I expect, and the short answer</h2>
+<table>
+  <tr><th style="width:42%">If they ask…</th><th>The answer</th></tr>
+  <tr><td>Why LoRA and not full fine-tuning?</td>
+  <td>Full FT is ~16 bytes/param of state — about 112 GB for 7B — and touches every weight. LoRA trains 1.75% and keeps the base frozen and inspectable. At this model size full FT would have fit, but it buys nothing for a task the adapter already solves.</td></tr>
+  <tr><td>Why r=16?</td>
+  <td>The task needs new label semantics across 77 overlapping classes, not just a new output style. r=8 is the usual starting point for style adaptation; 16 doubled capacity for 1.75% of params. r=32 would have been 3.4% with no evidence it was needed.</td></tr>
+  <tr><td>Why alpha=32?</td>
+  <td>α = 2r is the convention; effective scale α/r = 2. I did not tune it separately — I would rather say that than invent a justification.</td></tr>
+  <tr><td>Why mask the prompt in the loss?</td>
+  <td>So 100% of the gradient goes into “ticket → label”. Otherwise most of the learning signal is spent predicting the user’s question, which is random text.</td></tr>
+  <tr><td>Why is the baseline 0%?</td>
+  <td>It is not broken: the base model emits valid JSON but has no label vocabulary, so it writes <code>"bank"</code> or <code>"pending"</code>. With the 77 labels in the prompt it gets 21%, which is the fairer comparison.</td></tr>
+  <tr><td>Why 300 test examples?</td>
+  <td>Enough for a ±2.7 pp interval at 95% confidence, which separates 21% from 94% decisively.</td></tr>
+  <tr><td>Why did the second run score lower?</td>
+  <td>95.3% → 94.0% is 4 examples out of 300, i.e. inside the noise band. The 128-token run is the cleaner setup, so it is the one I report.</td></tr>
+  <tr><td>What would you do with more time?</td>
+  <td>Minimal-pair contrastive data for the confusable families (card timing, fee charges), label descriptions in the system prompt, and a kNN few-shot baseline. Then a rank sweep at n=1,000 test examples to make small differences measurable.</td></tr>
+</table>
+
+<h2>10. What I would tell them is still weak</h2>
+<ul>
+  <li><b>One seed per configuration.</b> I have one run at r=16, so I cannot claim a rank sweep. I can claim the
+  pipeline is reproducible: the same script and data give the same result.</li>
+  <li><b>300 test examples.</b> Enough to rank these three settings, not enough to claim a precise state of the art.
+  The published Banking77 numbers use all 3,080.</li>
+  <li><b>No slot extraction.</b> The output is one field. A richer schema would show more, but it also adds a span
+  metric I would need to justify.</li>
+  <li><b>Some gold labels are arguable.</b> A handful of the 18 errors are boundary cases inside the
+  <code>*_fee_charged</code> family. I say so in the report rather than hiding it, but it is a real caveat on the 94%.</li>
+</ul>
+
+<footer>
+  Task 1 notes · Qwen2.5-0.5B-Instruct + LoRA on Banking77 · all figures from my own runs on a free Colab T4.
+  Code and raw metrics: <code>task1-lora/</code> in the submission repo.
+</footer>
+
+</body>
+</html>
